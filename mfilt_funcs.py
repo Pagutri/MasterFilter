@@ -234,7 +234,9 @@ def _param_check(kind: str, Do: int) -> bool:
                 'low', 'lowpass', 'low pass',
                 'high', 'highpass', 'high pass',
                 'bandpass', 'bandstop', 
-                'band pass', 'band stop'
+                'band pass', 'band stop',
+                'notchpass', 'notchreject',
+                'notch pass', 'notch reject'
         2.- Que el parámetro `frecuencia de corte`, es decir
             Do o sigma, sea positivo.
     
@@ -251,7 +253,9 @@ def _param_check(kind: str, Do: int) -> bool:
         'low', 'high', 'lowpass', 'highpass', 
         'low pass', 'high pass',
         'bandpass', 'bandstop', 
-        'band pass', 'band stop'
+        'band pass', 'band stop',
+        'notchpass', 'notchreject',
+        'notch pass', 'notch reject'
     ]
     kind = kind.lower()
     _kind_check = kind in _kinds
@@ -444,8 +448,8 @@ def master_kernel(
 
     """
 
-    ## insert all pertinent param_checks : 
-    ##
+    assert _param_check(kind, Do), f'Invalid filter kind : `{kind}`, see help(mfilt_funcs._param_check)'
+    assert _param_check2(form, Do), f'Invalid filter formulation `{form}` see help(mfilt_funcs._param_check2)'
 
     H = np.zeros_like(image)
 
@@ -526,7 +530,7 @@ def kernel_ideal(M, N, centro, d0):
     v_k = centro[1]
     u = np.arange(M)
     v = np.arange(N)
-    U, V = np.meshgrid(u, v)
+    V, U = np.meshgrid(v, u)
     
     D_k = np.square(U - 0.5 * M - u_k) + np.square(V - 0.5 * N - v_k)
     D_mk = np.square(U - 0.5 * M + u_k) + np.square(V - 0.5 * N + v_k)
@@ -542,7 +546,7 @@ def kernel_gaussiano(M, N, centro, d0):
     v_k = centro[1]
     u = np.arange(M)
     v = np.arange(N)
-    U, V = np.meshgrid(u, v)
+    V, U = np.meshgrid(v, u)
     
     D_k = np.square(U - 0.5 * M - u_k) + np.square(V - 0.5 * N - v_k)
     D_mk = np.square(U - 0.5 * M + u_k) + np.square(V - 0.5 * N + v_k)
