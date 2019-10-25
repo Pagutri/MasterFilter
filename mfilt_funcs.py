@@ -6,10 +6,6 @@
 # ### Profesor : Dr. Arturo González Vega
 # ### Alumno : Gustavo Magaña López
 
-# In[3]:
-
-
-
 import copy
 from typing import Tuple, List, NoReturn
 
@@ -427,6 +423,7 @@ def master_kernel(
       wc2: int = None,
      kind: str = 'low',
      form: str = 'ideal',
+   center: Tuple[int] = (0, 0),
         n: int = 1
 ) -> np.ndarray:
     """
@@ -437,12 +434,20 @@ def master_kernel(
             los parámetros de diseño necesarios
         
         Calcula (diseña) un kernel de acuerdo a todas las especificaciones dadas.
+
+        def kernel_notch(img, d0, centro = (0, 0), tipo = 0, pasa = 0, n = 1):
+            Filtro notch. 
+            tipo = 0 para ideal, 1 para gaussiano y cualquier otro valor para butterworth.
+            pasa = 0 para notchreject, 1 para notchpass.
+            centro y radio son los del notch. notch simétrico automático.
+            Especificar n solo para butterworth
+
     """
 
     ## insert all pertinent param_checks : 
     ##
 
-    H = np.zeroslilke(image)
+    H = np.zeros_like(image)
 
     if 'low' in kind:
         H = kernel_lowpass(image, Do=Do, form=form, n=n)
@@ -453,8 +458,18 @@ def master_kernel(
             H = kernel_band_reject(image, Do=Do, w=w, wc1=wc1, wc2=wc2, form=form, n=n)
         else:
             H = kernel_band_pass(image, Do=Do, w=w, wc1=wc1, wc2=wc2, form=form, n=n)
-    else:
-        pass
+    elif 'notch' in kind:
+        _forma = 0
+        _pasa  = 0
+        if 'ideal' in form:
+            _forma = 0 
+        elif 'gauss' in form:
+            _forma = 1
+        else:
+            _forma = 2
+        if 'pass' in kind:
+            _pasa = 1
+        H = kernel_notch(image, Do, centro=center, tipo=_forma, pasa=_pasa, n=n)
     
     return H
 ##
@@ -491,4 +506,88 @@ def filtro_disco(image: np.ndarray, radius: int = 5) -> np.ndarray:
     return _filtered
 ##
 
+
+def imagen_dft(imagen):
+    """Esta función solo sirve con imágenes BGR,
+    aunque sean a escala de grises. Usa cv2.imread(imagen, 0)"""
+    dft = cv2.dft(np.float32(imagen), flags = cv2.DFT_COMPLEX_OUTPUT) # Transformada de la imagen
+    dft_shift = np.fft.fftshift(dft) # Centramos la transformada
+    magnitud = cv2.magnitude(dft_shift[:,:,0], dft_shift[:,:,1]) # Magnitud del espectro
+    # Regresar a imagen int
+    cota = 20 * np.log(magnitud)
+    img_transf = 255 * cota / np.max(cota)
+    img_transf = img_transf.astype(np.uint8)
+    
+    return img_transf
+##
+
+def kernel_ideal(M, N, centro, d0):
+    u_k = centro[0]
+    v_k = centro[1]
+    u = np.arange(M)
+    v = np.arange(N)
+    U, V = np.meshgrid(u, v)
+    
+    D_k = np.square(U - 0.5 * M - u_k) + np.square(V - 0.5 * N - v_k)
+    D_mk = np.square(U - 0.5 * M + u_k) + np.square(V - 0.5 * N + v_k)
+    H_k = np.where(D_k <= d0**2, 0, 1) # Primer pasaaltos
+    H_mk = np.where(D_mk <= d0**2, 0, 1) # Segundo pasaaltos
+    kernel = H_k * H_mk
+    
+    return kernel
+##
+
+def kernel_gaussiano(M, N, centro, d0):
+    u_k = centro[0]
+    v_k = centro[1]
+    u = np.arange(M)
+    v = np.arange(N)
+    U, V = np.meshgrid(u, v)
+    
+    D_k = np.square(U - 0.5 * M - u_k) + np.square(V - 0.5 * N - v_k)
+    D_mk = np.square(U - 0.5 * M + u_k) + np.square(V - 0.5 * N + v_k)
+    H_k = 1 - np.exp(-(0.5 / d0**2) * D_k) # Primer pasaaltos
+    H_mk = 1 - np.exp(-(0.5 / d0**2) * D_mk) # Segundo pasaaltos
+    kernel = H_k * H_mk
+    
+    return kernel
+##
+
+def kernel_butterworth(M, N, centro, d0, n):
+    u_k = centro[0]
+    v_k = centro[1]
+    u = np.arange(M)
+    v = np.arange(N)
+    V, U = np.meshgrid(v, u)
+    
+    D_k = np.square(U - 0.5 * M - u_k) + np.square(V - 0.5 * N - v_k)
+    D_mk = np.square(U - 0.5 * M + u_k) + np.square(V - 0.5 * N + v_k)
+    H_k = np.divide(D_k**n, D_k**n + d0**(2*n)) # Primer pasaaltos
+    H_mk = np.divide(D_mk**n, D_mk**n + d0**(2*n)) # Segundo pasaaltos
+    kernel = H_k * H_mk
+    
+    return kernel
+##
+
+def kernel_notch(img, d0, centro = (0, 0), tipo = 0, pasa = 0, n = 1):
+    """
+    Filtro notch. 
+    tipo = 0 para ideal, 1 para gaussiano y cualquier otro valor para butterworth.
+    pasa = 0 para notchreject, 1 para notchpass.
+    centro y radio son los del notch. notch simétrico automático.
+    Especificar n solo para butterworth
+    """
+    
+    M, N = img.shape
+    
+    if tipo == 0:
+        kernel_prov = kernel_ideal(M, N, centro, d0)
+    elif tipo == 1:
+        kernel_prov = kernel_gaussiano(M, N, centro, d0)
+    else:
+        kernel_prov = kernel_butterworth(M, N, centro, d0, n)
+    
+    kernel = pasa + (-1.0)**pasa * kernel_prov
+    return np.float64(kernel_prov)
+##
 

@@ -13,7 +13,7 @@
 
 import copy
 import importlib
-from typing import Tuple, List
+from typing import Tuple, List, NoReturn
 
 import numpy as np
 import scipy.fftpack as F
@@ -35,169 +35,179 @@ from PIL import Image
 import scipy.io as io
 
 
-# In[42]:
+# In[2]:
 
 
-# Importamos todas nuestras funciones :
+def reimport(module_name: str, alias: str = None, partial: bool = False) -> NoReturn:
+    """
+        Useless piece of code, literally.
+    """
+    _exec_str: str = ''
+    
+    if alias and not partial:
+        _exec_str  = f"import {module_name} as {alias}\n"
+        _exec_str += f"importlib.reload({alias})\n"
+        _exec_str += f"from {module_name} import * \n"
+    elif alias and partial:
+        _exec_str  = f"import {module_name} as {alias}\n"
+        _exec_str += f"importlib.reload({alias})\n"
+    elif not alias and not partial:
+        _exec_str  = f"import {module_name} as __reimport_tmp\n"
+        _exec_str += f"importlib.reload(__reimport_tmp)\n"
+        _exec_str += f"from {module_name} import * \n"
+        
+    exec(_exec_str)
+
+##
+
+
+# In[103]:
+
+
+# Importamos todas nuestras funciones (le Gus):
 import mfilt_funcs as mine
 importlib.reload(mine)
 from mfilt_funcs import *
 
 
-# In[3]:
+# In[4]:
+
+
+# Importamos todas nuestras funciones (la Pats):
+"""
+import filtro_notch as lapats
+importlib.reload(lapats)
+from filtro_notch import *
+"""
+
+
+# In[5]:
 
 
 def black_and_white(input_image_path):
    return Image.open(input_image_path).convert('L')
 
 
-# In[4]:
+# In[6]:
 
 
 plt.rcParams['figure.figsize'] = (10, 10)
 
 
-# In[5]:
+# In[7]:
 
 
 eps = np.finfo(float).eps
 eps.setflags(write=False)
 
 
-# In[6]:
+# In[8]:
 
 
 I = img.imread('imagenes/mama.tif')
 plt.imshow(I, cmap='gray')
 
 
-# In[7]:
+# In[9]:
 
 
 fft_viz(I)
 
 
-# In[18]:
+# In[10]:
 
 
 img_surf(I)
 
 
-# In[16]:
+# In[11]:
 
 
 HighI = kernel_highpass(pre_fft_processing(I), Do=1500, form='gauss')
 
 
-# In[17]:
+# In[12]:
 
 
 img_surf(HighI)
 
 
-# In[85]:
+# In[13]:
 
 
 plt.imshow(HighI, cmap='gray')
 
 
-# In[60]:
+# In[14]:
 
 
 list(map(cv2.getOptimalDFTSize, I.shape))
 
 
-# In[62]:
+# In[15]:
 
 
 I.shape
 
 
-# In[19]:
+# In[16]:
 
 
 newI = pre_fft_processing(I)
 
 
-# In[20]:
+# In[41]:
 
 
-x = black_and_white('imagenes/RadiografiaRuidoCoherente.jpg')
+x = cv2.imread('imagenes/RadiografiaRuidoCoherente.jpg', 0)
 
 
-# In[21]:
+# In[42]:
 
 
 #io.m
 
 
-# In[22]:
+# In[43]:
 
 
 plt.imshow(x, cmap='gray')
 
 
-# In[23]:
+# In[44]:
 
 
 fft_viz(x)
 
 
-# In[89]:
-
-
-x.shape
-
-
-# In[24]:
-
-
-#help(plt.imread)
-
-
-# In[25]:
+# In[21]:
 
 
 """
     Ideas = crear una matriz de desplazamientos.
     
 """
-I
 
 
-# In[26]:
-
-
-U, V = fourier_meshgrid(I)
-D = fourier_distance(U, V)
-H = np.zeros_like(D)
-
-
-# In[27]:
-
-
-dd = (D / D.max())*255
-
-
-# In[28]:
-
-
-di = np.uint8(dd)
-
-
-# In[29]:
+# In[22]:
 
 
 img_surf(distance_meshgrid_2D(I))
 
 
-# In[30]:
+# In[23]:
 
 
-plt.imshow(kernel_band_pass(I, wc1=201, wc2=500, form='btw'), cmap='gray')
+plt.imshow(I, cmap='gray')
 
 
-# In[56]:
+# In[24]:
+
+
+plt.imshow(kernel_highpass(I, Do=500, form='ideal'), cmap='gray')
+
+
+# In[25]:
 
 
 img_surf(kernel_lowpass(I, form='btw', Do=640, n=9), colormap=cm.viridis)
@@ -206,19 +216,91 @@ img_surf(kernel_lowpass(I, form='btw', Do=640, n=9), colormap=cm.viridis)
 # In[ ]:
 
 
-img_surf(ker )
+
 
 
 # In[40]:
 
 
-dir(cm)
+#dir(cm)
 
 
-# In[41]:
+# In[28]:
 
 
 type(cm.coolwarm)
+
+
+# In[29]:
+
+
+aiuto = aiuda = jelp = help
+
+
+# In[30]:
+
+
+aiuda(kernel_ideal)
+
+
+# In[32]:
+
+
+#kernel_ideal(I.shape[0], I.shape[1], 0, (100, 400), 0, 100)
+
+
+# In[33]:
+
+
+aiuto(master_kernel)
+
+
+# In[34]:
+
+
+reimport('mfilt_funcs')
+
+
+# In[35]:
+
+
+plt.imshow(master_kernel(I, Do=100, kind='high', form='gauss'), cmap='gray')
+
+
+# In[36]:
+
+
+fft_viz(x)
+
+
+# In[101]:
+
+
+img_surf(kernel_notch(I, d0=15, centro=(100, 60), tipo=1, n=4))
+
+
+# In[77]:
+
+
+type(my_kern)
+
+
+# In[73]:
+
+
+np.float64(my_kern)
+
+
+# In[74]:
+
+
+my_kern.
+
+
+# In[ ]:
+
+
+img_surf(master_kernel(I, Do=10, center=(14, 55), kind='notchpass', form='gauss'))
 
 
 # In[ ]:
