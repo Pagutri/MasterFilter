@@ -235,6 +235,7 @@ def _param_check(kind: str, Do: int) -> bool:
                 'high', 'highpass', 'high pass',
                 'bandpass', 'bandstop', 
                 'band pass', 'band stop',
+                'bandreject', 'band reject',
                 'notchpass', 'notchreject',
                 'notch pass', 'notch reject'
         2.- Que el parámetro `frecuencia de corte`, es decir
@@ -254,6 +255,7 @@ def _param_check(kind: str, Do: int) -> bool:
         'low pass', 'high pass',
         'bandpass', 'bandstop', 
         'band pass', 'band stop',
+        'bandreject', 'band reject',
         'notchpass', 'notchreject',
         'notch pass', 'notch reject'
     ]
@@ -438,14 +440,6 @@ def master_kernel(
             los parámetros de diseño necesarios
         
         Calcula (diseña) un kernel de acuerdo a todas las especificaciones dadas.
-
-        def kernel_notch(img, d0, centro = (0, 0), tipo = 0, pasa = 0, n = 1):
-            Filtro notch. 
-            tipo = 0 para ideal, 1 para gaussiano y cualquier otro valor para butterworth.
-            pasa = 0 para notchreject, 1 para notchpass.
-            centro y radio son los del notch. notch simétrico automático.
-            Especificar n solo para butterworth
-
     """
 
     assert _param_check(kind, Do), f'Invalid filter kind : `{kind}`, see help(mfilt_funcs._param_check)'
@@ -458,7 +452,7 @@ def master_kernel(
     elif 'high' in kind:
         H = kernel_highpass(image, Do=Do, form=form, n=n)
     elif 'band' in kind:
-        if 'reject' in kind:
+        if ('reject' in kind) or ('stop' in kind):
             H = kernel_band_reject(image, Do=Do, w=w, wc1=wc1, wc2=wc2, form=form, n=n)
         else:
             H = kernel_band_pass(image, Do=Do, w=w, wc1=wc1, wc2=wc2, form=form, n=n)
@@ -478,7 +472,44 @@ def master_kernel(
     return H
 ##
     
-    
+def filtra_maestra(
+    image: np.ndarray,
+       Do: int = 50,
+        w: int = 15,
+      wc1: int = None,
+      wc2: int = None,
+     kind: str = 'low',
+     form: str = 'ideal',
+   center: Tuple[int] = (0, 0),
+        n: int = 1
+) -> np.ndarray:
+    """
+        Diseña y aplica un filtro.
+        Envoltura para master_kernel(*args, **kw)
+        
+        return FFT
+
+    """
+
+    kernel = master_kernel(
+           image,
+           Do = Do,
+            w = w,
+          wc1 = wc1,
+          wc2 = wc2,
+         kind = kind,
+         form = form,
+       center = center,
+            n = n
+    ) 
+
+    transformada = np.fft.fftshift(np.fft.fft2(image))
+    aplico_filtro = kernel * transformada
+    img_filtrada = np.real(np.fft.ifft2(np.fft.ifftshift(aplico_filtro)))
+
+    return img_filtrada
+##
+
 def __FiltraGaussiana(image: np.ndarray, sigma: float, kind: str = 'low') -> np.ndarray:
     """
         DO NOT USE THIS FUNCTION !
